@@ -6,6 +6,7 @@ import urllib, urlparse, os, argparse
 def get_options():
   parser = argparse.ArgumentParser(description='AWS Documentation Downloader')
   parser.add_argument('-d','--documentation', help='Download the Documentation', action='store_true', required=False)
+  parser.add_argument('-a','--answers', help='Download the Answers', action='store_true', required=False)
   parser.add_argument('-w','--whitepapers', help='Download White Papers', action='store_true', required=False)
   parser.add_argument('-f','--force', help='Overwrite old files', action='store_true', required=False)
   args = vars(parser.parse_args())
@@ -27,6 +28,25 @@ def list_pdfs(start_page):
           if "whitepapers" in uri or "enterprise-marketing" in uri:
             pdfs.add(uri)
       # Allow all documents to be returned
+      if "answers" in start_page:
+        if uri.startswith("/answers/"):
+          if not (uri.endswith("/account-management/") or uri.endswith("/big-data/") or uri.endswith("/configuration-management/") or uri.endswith("/devops/") or uri.endswith("/infrastructure-management/") or uri.endswith("/iot/") or uri.endswith("/logging/") or uri.endswith("/media-entertainment/") or uri.endswith("/migration/") or uri.endswith("/mobile/") or uri.endswith("/networking/") or uri.endswith("/security/") or uri.endswith("/web-applications/") ):
+            base_url = "http://aws.amazon.com"
+            url = base_url + uri
+	    # Parse the HTML sub page (this is where the links to the pdf's live)
+    	    html_page_doc = urllib.urlopen(url)
+	    soup_doc = BeautifulSoup(html_page_doc, 'html.parser')
+	    # Get the A tag from the parsed page
+	    for link in soup_doc.findAll('a'):
+              try:
+                sub_url = link.get('href')
+                sub_base_url = "https:"
+                if (sub_url.endswith("pdf") and ("answers" in sub_url)):
+                  pdfs.add(sub_base_url+sub_url)
+                if (sub_url.endswith("pdf") and ("solutions-reference" in sub_url)):
+                  pdfs.add(sub_url)
+              except:
+                continue
       if "documentation" in start_page:
         if uri.startswith("/documentation/"):
           if not (uri.endswith("/documentation/") or uri.endswith("/kindle/") or uri.startswith("/documentation/?nc") ):
@@ -55,7 +75,7 @@ def save_pdf(full_dir,filename,i):
   if not os.path.exists(file_loc) or force == True:
     if i.startswith("//"):
       i = "http:" + i
-    print "Downloading : " + i  
+    print "Downloading : " + i
     web = urllib.urlopen(i)
     print "Saving to : " + file_loc
     # Save Data to disk
@@ -93,6 +113,10 @@ force = args['force']
 if args['documentation']:
   print "Downloading Docs"
   pdf_list = list_pdfs("https://aws.amazon.com/documentation/")
+  get_pdfs(pdf_list, force)
+if args['answers']:
+  print "Downloading Answers"
+  pdf_list = list_pdfs("https://aws.amazon.com/answers/")
   get_pdfs(pdf_list, force)
 if args['whitepapers']:
   print "Downloading Whitepapaers"
